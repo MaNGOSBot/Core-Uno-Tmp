@@ -163,14 +163,14 @@ if(PCH)
     ADD_CXX_PCH(${LIBRARY_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/pchdef.h ${CMAKE_CURRENT_SOURCE_DIR}/pchdef.cpp)
 endif()
 
-#if(PLAYERBOTS)
-#    include_directories(
-#        ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot
-#        ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
-#    )
-#    target_link_libraries(${LIBRARY_NAME} Bots)
-#    add_dependencies(${LIBRARY_NAME} Bots)
-#endif()
+if(SCRIPT_BOTS)
+    include_directories(
+        ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot
+        ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
+    )
+    target_link_libraries(${LIBRARY_NAME} Bots)
+    add_dependencies(${LIBRARY_NAME} Bots)
+endif()
 
 if(SCRIPT_LIB_SD3)
     include_directories(${CMAKE_SOURCE_DIR}/src/modules/SD3)
@@ -198,4 +198,5 @@ if(WIN32 AND MSVC)
     add_custom_command(TARGET ${LIBRARY_NAME}
         POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/AuctionHouseBot/ahbot.conf.dist" "${CONF_COPY_DIR}"
     )
+	set_target_properties(${LIBRARY_NAME} PROPERTIES FOLDER Core)
 endif()

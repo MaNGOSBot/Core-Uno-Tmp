@@ -71,6 +71,9 @@
 #ifdef ENABLE_ELUNA
 #include "LuaEngine.h"
 #endif /* ENABLE_ELUNA */
+#ifdef ENABLE_BOTS
+#include "playerbot.h"
+#endif
 
 #include <cmath>
 
@@ -389,6 +392,10 @@ UpdateMask Player::updateVisualBits;
 
 Player::Player(WorldSession* session): Unit(), m_mover(this), m_camera(this), m_reputationMgr(this)
 {
+#ifdef ENABLE_BOTS
+    m_playerbotAI = 0;
+    m_playerbotMgr = 0;
+#endif
     m_transport = 0;
 
     m_speakTime = 0;
@@ -415,6 +422,15 @@ Player::Player(WorldSession* session): Unit(), m_mover(this), m_camera(this), m_
 
     m_usedTalentCount = 0;
 
+  /*  m_modManaRegen = 0;
+    m_modManaRegenInterrupt = 0;
+
+    m_rageDecayRate = 1.25f;
+    m_rageDecayMultiplier = 19.50f;
+
+    for (int s = 0; s < MAX_SPELL_SCHOOL; s++)
+        { m_SpellCritPercentage[s] = 0.0f; }
+*/
     m_regenTimer = 0;
     m_weaponChangeTimer = 0;
 
@@ -555,6 +571,10 @@ Player::Player(WorldSession* session): Unit(), m_mover(this), m_camera(this), m_
 
     m_lastFallTime = 0;
     m_lastFallZ = 0;
+#ifdef ENABLE_BOTS
+    m_playerbotAI = NULL;
+    m_playerbotMgr = NULL;
+#endif
 }
 
 Player::~Player()
@@ -592,6 +612,16 @@ Player::~Player()
     for (uint8 i = 0; i < MAX_DIFFICULTY; ++i)
         for (BoundInstancesMap::iterator itr = m_boundInstances[i].begin(); itr != m_boundInstances[i].end(); ++itr)
             itr->second.state->RemovePlayer(this);
+#ifdef ENABLE_BOTS
+    if (m_playerbotAI) {
+        delete m_playerbotAI;
+        m_playerbotAI = 0;
+    }
+    if (m_playerbotMgr) {
+        delete m_playerbotMgr;
+        m_playerbotMgr = 0;
+    }
+#endif
 
     delete m_declinedname;
 }
@@ -1364,6 +1394,13 @@ void Player::Update(uint32 update_diff, uint32 p_time)
 
     if (IsHasDelayedTeleport())
         { TeleportTo(m_teleport_dest, m_teleport_options); }
+
+#ifdef ENABLE_BOTS
+    if (m_playerbotAI)
+        m_playerbotAI->UpdateAI(p_time);
+    if (m_playerbotMgr)
+        m_playerbotMgr->UpdateAI(p_time);
+#endif
 }
 
 void Player::SetDeathState(DeathState s)
@@ -1975,17 +2012,17 @@ void Player::Regenerate(Powers power)
             if (recentCast)
             {
                 // Mangos Updates Mana in intervals of 2s, which is correct
-                addvalue = GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN_INTERRUPT) *  ManaIncreaseRate * 2.00f;
+			addvalue = GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN_INTERRUPT) *  ManaIncreaseRate * 2.00f;
             }
             else
             {
-                addvalue = GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN) * ManaIncreaseRate * 2.00f;
+			addvalue = GetFloatValue(PLAYER_FIELD_MOD_MANA_REGEN) * ManaIncreaseRate * 2.00f;
             }
         }   break;
         case POWER_RAGE:                                    // Regenerate rage
         {
-            float RageDecreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_RAGE_LOSS);
-            addvalue = 20 * RageDecreaseRate;               // 2 rage by tick (= 2 seconds => 1 rage/sec)
+			float RageDecreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_RAGE_LOSS);
+			addvalue = 20 * RageDecreaseRate;               // 2 rage by tick (= 2 seconds => 1 rage/sec)
         }   break;
         case POWER_ENERGY:                                  // Regenerate energy (rogue)
         {
@@ -2009,20 +2046,20 @@ void Player::Regenerate(Powers power)
                 { addvalue *= ((*i)->GetModifier()->m_amount + 100) / 100.0f; }
     }
 
-    if (power != POWER_RAGE)
-    {
-        curValue += uint32(addvalue);
-        if (curValue > maxValue)
-            { curValue = maxValue; }
-    }
-    else
-    {
-        if (curValue <= uint32(addvalue))
-            { curValue = 0; }
-        else
-            { curValue -= uint32(addvalue); }
-    }
-    SetPower(power, curValue);
+	if (power != POWER_RAGE)
+		 {
+		curValue += uint32(addvalue);
+		if (curValue > maxValue)
+			 { curValue = maxValue; }
+		}
+	else
+		 {
+		if (curValue <= uint32(addvalue))
+			 { curValue = 0; }
+		else
+			 { curValue -= uint32(addvalue); }
+		}
+	SetPower(power, curValue);
 }
 
 void Player::RegenerateHealth()
@@ -2574,8 +2611,8 @@ void Player::InitStatsForLevel(bool reapplyMods)
     SetFloatValue(PLAYER_RANGED_CRIT_PERCENTAGE, 0.0f);
 
     // Init spell schools (will be recalculated in UpdateAllStats() at loading and in _ApplyAllStatBonuses() at reset
-    for (uint8 i = 0; i < MAX_SPELL_SCHOOL; ++i)
-        SetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1 + i, 0.0f);
+	for (uint8 i = 0; i < MAX_SPELL_SCHOOL; ++i)
+	SetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1 + i, 0.0f);
 
     SetFloatValue(PLAYER_PARRY_PERCENTAGE, 0.0f);
     SetFloatValue(PLAYER_BLOCK_PERCENTAGE, 0.0f);
@@ -6025,8 +6062,6 @@ void Player::CheckAreaExploreAndOutdoor()
             SpellEntry const* spellInfo = sSpellStore.LookupEntry(itr->first);
             if (!spellInfo || !IsNeedCastSpellAtOutdoor(spellInfo) || HasAura(itr->first))
                 { continue; }
-            if ((spellInfo->Stances || spellInfo->StancesNot) && !IsNeedCastSpellAtFormApply(spellInfo, GetShapeshiftForm()))
-                continue;
             CastSpell(this, itr->first, true, NULL);
         }
     }
@@ -13042,11 +13077,11 @@ void Player::AddQuest(Quest const* pQuest, Object* questGiver)
     UpdateForQuestWorldObjects();
 }
 
-void Player::CompleteQuest(uint32 quest_id, QuestStatus status)
+void Player::CompleteQuest(uint32 quest_id)
 {
     if (quest_id)
     {
-        SetQuestStatus(quest_id, status);
+        SetQuestStatus(quest_id, QUEST_STATUS_COMPLETE);
 
         uint16 log_slot = FindQuestSlot(quest_id);
         if (log_slot < MAX_QUEST_LOG_SIZE)
@@ -13689,11 +13724,7 @@ QuestStatus Player::GetQuestStatus(uint32 quest_id) const
     {
         QuestStatusMap::const_iterator itr = mQuestStatus.find(quest_id);
         if (itr != mQuestStatus.end())
-        {
-            if (itr->second.m_status == QUEST_STATUS_FORCE_COMPLETE)
-                return QUEST_STATUS_COMPLETE;
-            return itr->second.m_status;
-        }
+            { return itr->second.m_status; }
     }
     return QUEST_STATUS_NONE;
 }

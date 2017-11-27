@@ -3206,7 +3206,7 @@ void Aura::HandleChannelDeathItem(bool apply, bool Real)
         {
             // Only from non-grey units
             if (!((Player*)caster)->isHonorOrXPTarget(victim) ||
-                (victim->GetTypeId() == TYPEID_UNIT && !((Creature*)victim)->IsTappedBy((Player*)caster)))
+                (victim->GetTypeId() == TYPEID_UNIT && !((Player*)caster)->isAllowedToLoot((Creature*)victim)))
                 { return; }
         }
 
@@ -3398,9 +3398,6 @@ void Aura::HandleModPossess(bool apply, bool Real)
         {
             ((Creature*)target)->AIM_Initialize();
             target->AttackedBy(caster);
-
-            if (GetId() == 29989)       // dismiss Robotron 3000
-                ((Creature*)target)->ForcedDespawn();
         }
     }
 }

@@ -62,6 +62,11 @@ class Item;
 
 struct AreaTrigger;
 
+#ifdef ENABLE_BOTS
+class PlayerbotAI;
+class PlayerbotMgr;
+#endif
+
 typedef std::deque<Mail*> PlayerMails;
 
 #define PLAYER_MAX_SKILLS           127
@@ -1050,8 +1055,8 @@ class Player : public Unit
         void SetGMVisible(bool on);
         void SetPvPDeath(bool on)
         {
-            if (on) { m_ExtraFlags |= PLAYER_EXTRA_PVP_DEATH; }
-            else { m_ExtraFlags &= ~PLAYER_EXTRA_PVP_DEATH; }
+            if (on) { m_ExtraFlags |= PLAYER_EXTRA_PVP_DEATH; } 
+            else { m_ExtraFlags &= ~PLAYER_EXTRA_PVP_DEATH; } 
         }
 
         // 0 = own auction, -1 = enemy auction, 1 = goblin auction
@@ -1136,12 +1141,12 @@ class Player : public Unit
         void Say(const std::string& text, const uint32 language);
         void Yell(const std::string& text, const uint32 language);
         void TextEmote(const std::string& text);
-        /**
+        /** 
          * This will log a whisper depending on the setting LogWhispers in mangosd.conf, for a list
          * of available levels please see \ref WhisperLoggingLevels. The logging is done to database
          * in the table characters.character_whispers and includes to/from, text and when the whisper
          * was sent.
-         *
+         * 
          * @param text the text that was sent
          * @param receiver guid of the receiver of the message
          * \see WhisperLoggingLevels
@@ -1355,7 +1360,7 @@ class Player : public Unit
         bool CanRewardQuest(Quest const* pQuest, bool msg) const;
         bool CanRewardQuest(Quest const* pQuest, uint32 reward, bool msg) const;
         void AddQuest(Quest const* pQuest, Object* questGiver);
-        void CompleteQuest(uint32 quest_id, QuestStatus status = QUEST_STATUS_COMPLETE);
+        void CompleteQuest(uint32 quest_id);
         void IncompleteQuest(uint32 quest_id);
         void RewardQuest(Quest const* pQuest, uint32 reward, Object* questGiver, bool announce = true);
 
@@ -1452,6 +1457,9 @@ class Player : public Unit
         /*********************************************************/
 
         bool LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder);
+#ifdef ENABLE_BOTS
+        bool MinimalLoadFromDB(QueryResult *result, uint32 guid);
+#endif
 
         static uint32 GetZoneIdFromDB(ObjectGuid guid);
         static uint32 GetLevelFromDB(ObjectGuid guid);
@@ -2225,6 +2233,15 @@ class Player : public Unit
         /*********************************************************/
         /***                 VARIOUS SYSTEMS                   ***/
         /*********************************************************/
+
+	/*	float m_modManaRegen;
+		float m_modManaRegenInterrupt;
+
+		float m_rageDecayRate;
+		float m_rageDecayMultiplier;
+
+		float m_SpellCritPercentage[MAX_SPELL_SCHOOL];
+*/
         bool HasMovementFlag(MovementFlags f) const;        // for script access to m_movementInfo.HasMovementFlag
         void UpdateFallInformationIfNeed(MovementInfo const& minfo, uint16 opcode);
         void SetFallInformation(uint32 time, float z)
@@ -2369,6 +2386,15 @@ class Player : public Unit
         bool IsTappedByMeOrMyGroup(Creature* creature);
         bool isAllowedToLoot(Creature* creature);
 
+#ifdef ENABLE_BOTS
+        //EquipmentSets& GetEquipmentSets() { return m_EquipmentSets; }
+        void SetPlayerbotAI(PlayerbotAI* ai) { assert(!m_playerbotAI && !m_playerbotMgr); m_playerbotAI = ai; }
+        PlayerbotAI* GetPlayerbotAI() { return m_playerbotAI; }
+        void SetPlayerbotMgr(PlayerbotMgr* mgr) { assert(!m_playerbotAI && !m_playerbotMgr); m_playerbotMgr = mgr; }
+        PlayerbotMgr* GetPlayerbotMgr() { return m_playerbotMgr; }
+        void SetBotDeathTimer() { m_deathTimer = 0; }
+        //PlayerTalentMap& GetTalentMap(uint8 spec) { return m_talents[spec]; }
+#endif
         DeclinedName const* GetDeclinedNames() const { return m_declinedname; }
         bool HasTitle(uint32 bitIndex) const;
         bool HasTitle(CharTitlesEntry const* title) const { return HasTitle(title->bit_index); }
@@ -2614,6 +2640,10 @@ class Player : public Unit
         GridReference<Player> m_gridRef;
         MapReference m_mapRef;
 
+#ifdef ENABLE_BOTS
+        PlayerbotAI* m_playerbotAI;
+        PlayerbotMgr* m_playerbotMgr;
+#endif
         // Homebind coordinates
         uint32 m_homebindMapId;
         uint16 m_homebindAreaId;

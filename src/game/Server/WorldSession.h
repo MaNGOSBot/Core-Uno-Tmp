@@ -808,6 +808,12 @@ class WorldSession
         void HandleGuildBankBuyTab(WorldPacket& recv_data);
         void HandleQueryGuildBankTabText(WorldPacket& recv_data);
         void HandleSetGuildBankTabText(WorldPacket& recv_data);
+#ifdef ENABLE_BOTS
+        void HandleBotPackets();
+#endif
+
+        // for Warden
+        uint16 GetClientBuild() const { return _build; }
 
         void HandleGetMirrorimageData(WorldPacket& recv_data);
     private:
@@ -833,6 +839,7 @@ class WorldSession
 
         // Warden
         Warden* _warden;                                    // Remains NULL if Warden system is not enabled by config
+		uint16 _build;                                      // connected client build
 
         time_t _logoutTime;
         bool m_inQueue;                                     // session wait in auth.queue
